@@ -90,8 +90,7 @@ async function joinRoom() {
 async function openUserMedia() {
   loading.value = true
   localVideo.value = await navigator.mediaDevices.getUserMedia({ video: true, audio: { 'echoCancellation': true } })
-  remoteVideo.value = new MediaStream()
-
+  
   console.log('Stream:', localVideo.value)
   mediaOpened.value = true
   loading.value = false
@@ -99,17 +98,12 @@ async function openUserMedia() {
 
 async function hangUp() {
   loading.value = true
-  localVideo.value!.getTracks().forEach(track => {
-    track.stop()
-  })
   if (remoteVideo.value) {
     remoteVideo.value.getTracks().forEach(track => track.stop())
   }
   if (peerConnection) {
     peerConnection.close()
   }
-
-  localVideo.value = null
   remoteVideo.value = null
   roomId.value = null
   currentRoom.value = ''
@@ -151,6 +145,7 @@ function registerPeerConnectionListeners(localName: string, remoteName: string) 
       `ICE connection state change: ${peerConnection!.iceConnectionState}`)
   })
 
+  remoteVideo.value = new MediaStream()
   peerConnection.addEventListener('track', event => {
     console.log('Got remote track:', event.streams[0])
     event.streams[0].getTracks().forEach(track => {
@@ -199,7 +194,7 @@ function registerPeerConnectionListeners(localName: string, remoteName: string) 
       <video :srcObject="localVideo" muted autoplay playsinline></video>
       <video :srcObject="remoteVideo" autoplay playsinline></video>
     </div>
-    <el-dialog v-model="dialogVisible" title="Join room" width="30%">
+    <el-dialog v-model="dialogVisible" title="Join room" width="450px">
       <div class="dialog-form">
         <span>Enter ID for room to join:</span>
         <el-input v-model="roomId" />
