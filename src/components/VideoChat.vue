@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { collection, doc, addDoc, getDoc, updateDoc, onSnapshot, DocumentData, DocumentReference } from 'firebase/firestore'
+import { collection, doc, addDoc, getDoc, updateDoc, deleteDoc, onSnapshot, DocumentData, DocumentReference, getDocs } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import * as mdc from 'material-components-web'
 import 'material-components-web/dist/material-components-web.css'
@@ -51,11 +51,6 @@ async function collectIceCandidates(localName: string, remoteName: string) {
     }
   })
 
-  // ;(await getDocs(remoteCollection)).forEach((doc) => {
-  //   const candidate = new RTCIceCandidate(doc.data())
-  //   debugger
-  //   peerConnection!.addIceCandidate(candidate)
-  // })
   onSnapshot(remoteCollection, async (snapshot) => {
     snapshot.docChanges().forEach(change => {
       console.log('remote change,', change)
@@ -102,13 +97,10 @@ async function createRoom() {
   onSnapshot(doc(db, "rooms", roomId.value), async (snapshot) => {
     console.log('Got updated room:', snapshot.data())
     const data = snapshot.data()
-    if (!peerConnection!.currentRemoteDescription && data!.answer) {
+    if (!peerConnection!.currentRemoteDescription && data && data.answer) {
       console.log('Set remote description: ', data!.answer)
       const answer = new RTCSessionDescription(data!.answer)
       await peerConnection!.setRemoteDescription(answer)
-      // localVideo.value!.getTracks().forEach(track => {
-      //   peerConnection!.addTrack(track, localVideo.value!)
-      // })
     }
   })
 
@@ -232,19 +224,16 @@ async function hangUp() {
 
   // Delete room on hangup
   if (roomId.value) {
-    // const roomRef = db.collection('rooms').doc(roomId.value)
-    // const calleeCandidates = await roomRef.collection('calleeCandidates').get()
-    // calleeCandidates.forEach(async candidate => {
-    //   await candidate.delete()
-    // })
-    // const callerCandidates = await roomRef.collection('callerCandidates').get()
-    // callerCandidates.forEach(async candidate => {
-    //   await candidate.delete()
-    // })
-    // await roomRef.delete()
+    const calleeCandidates = collection(roomRef!, 'calleeCandidates')
+    ; (await getDocs(calleeCandidates)).forEach((candidate) => {
+      deleteDoc(doc(calleeCandidates, candidate.id))
+    })
+    const callerCandidates = collection(roomRef!, 'callerCandidates')
+    ; (await getDocs(callerCandidates)).forEach((candidate) => {
+      deleteDoc(doc(callerCandidates, candidate.id))
+    })
+    await deleteDoc(roomRef!)
   }
-
-  document.location.reload()
 }
 
 function registerPeerConnectionListeners() {
